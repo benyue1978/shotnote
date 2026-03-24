@@ -2,6 +2,8 @@
 
 `shotnote` is a macOS-only CLI that pulls screenshots from `Photos.app` and turns each image into a Markdown note with an OpenAI vision model.
 
+If you are like me, you take screenshots of short videos on your phone. When watching low-signal AI-generated short videos, often the only things worth keeping are the GitHub repo URL and a few keywords for further learning. This tool is for you.
+
 It is built for a simple workflow:
 
 1. Capture screenshots on your phone.
