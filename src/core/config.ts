@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import fs from "fs-extra";
 
 import { expandHomeDir, getAppPaths } from "./paths.js";
@@ -7,6 +9,24 @@ type ConfigFileShape = Partial<{
   source: Partial<ShotnoteConfig["source"]>;
   analysis: Partial<Omit<ShotnoteConfig["analysis"], "openAIApiKey">> & Partial<{ apiKey: string }>;
 }>;
+
+export const defaultConfigFile = `${JSON.stringify(
+  {
+    source: {
+      type: "photos-album",
+      albumName: "Screenshots"
+    },
+    analysis: {
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      promptPath: "~/.shotnote/prompts/analyze-screenshot.md",
+      apiKey: ""
+    }
+  },
+  null,
+  2
+)}
+`;
 
 export async function resolveConfig(options: ResolveConfigOptions = {}): Promise<ShotnoteConfig> {
   const env = options.env ?? process.env;
@@ -58,4 +78,15 @@ async function readConfigFile(configPath: string): Promise<ConfigFileShape> {
   }
 
   return fs.readJson(configPath) as Promise<ConfigFileShape>;
+}
+
+export async function bootstrapConfigFile(configPath: string) {
+  if (await fs.pathExists(configPath)) {
+    return fs.readFile(configPath, "utf8");
+  }
+
+  await fs.ensureDir(path.dirname(configPath));
+  await fs.writeFile(configPath, defaultConfigFile);
+
+  return defaultConfigFile;
 }

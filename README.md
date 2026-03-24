@@ -11,6 +11,14 @@ shotnote analyze
 shotnote run
 ```
 
+For prompt testing or one-off retries, you can re-analyze a single image already in `~/.shotnote/inbox/`:
+
+```bash
+shotnote analyze --image 2026-03-24-existing.png --force
+```
+
+`--image` only accepts a file name from `~/.shotnote/inbox/`. `--force` requires `--image`.
+
 ## Working Directory
 
 Shotnote manages files under `~/.shotnote/`:

@@ -46,4 +46,42 @@ describe("createCli", () => {
 
     expect(order).toEqual(["sync", "analyze"]);
   });
+
+  it("passes image and force flags to analyze", async () => {
+    const analyze = vi.fn().mockResolvedValue({ analyzedCount: 1, skippedCount: 0 });
+    const cli = createCli({
+      syncService: {
+        listAlbums: vi.fn(),
+        sync: vi.fn()
+      },
+      analyzeService: {
+        analyze
+      },
+      writeLine: vi.fn()
+    });
+
+    await cli.parseAsync(["node", "shotnote", "analyze", "--image", "2026-03-24-existing.png", "--force"]);
+
+    expect(analyze).toHaveBeenCalledWith({
+      imageName: "2026-03-24-existing.png",
+      force: true
+    });
+  });
+
+  it("rejects force without image", async () => {
+    const cli = createCli({
+      syncService: {
+        listAlbums: vi.fn(),
+        sync: vi.fn()
+      },
+      analyzeService: {
+        analyze: vi.fn()
+      },
+      writeLine: vi.fn()
+    });
+
+    await expect(cli.parseAsync(["node", "shotnote", "analyze", "--force"])).rejects.toThrow(
+      "--force requires --image"
+    );
+  });
 });

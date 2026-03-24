@@ -5,7 +5,7 @@ import fs from "fs-extra";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { bootstrapPromptFile, defaultAnalyzePrompt } from "./prompt-store.js";
-import { resolveConfig } from "./config.js";
+import { bootstrapConfigFile, defaultConfigFile, resolveConfig } from "./config.js";
 
 const tempRoots: string[] = [];
 
@@ -68,6 +68,32 @@ describe("resolveConfig", () => {
 
     expect(config.analysis.model).toBe("gpt-4.1-mini");
     expect(config.analysis.openAIApiKey).toBe("env-key");
+  });
+});
+
+describe("bootstrapConfigFile", () => {
+  it("creates the default config when config.json does not exist", async () => {
+    const homeDir = await createTempHome();
+    const configPath = path.join(homeDir, ".shotnote", "config.json");
+
+    const content = await bootstrapConfigFile(configPath);
+    const savedContent = await fs.readFile(configPath, "utf8");
+
+    expect(content).toBe(defaultConfigFile);
+    expect(savedContent).toBe(defaultConfigFile);
+  });
+
+  it("preserves an existing config file", async () => {
+    const homeDir = await createTempHome();
+    const configPath = path.join(homeDir, ".shotnote", "config.json");
+    const customConfig = JSON.stringify({ analysis: { model: "gpt-4.1" } }, null, 2);
+
+    await fs.ensureDir(path.dirname(configPath));
+    await fs.writeFile(configPath, customConfig);
+
+    const content = await bootstrapConfigFile(configPath);
+
+    expect(content).toBe(customConfig);
   });
 });
 

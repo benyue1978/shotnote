@@ -135,4 +135,105 @@ describe("createAnalyzeService", () => {
     expect(result.skippedCount).toBe(1);
     expect(analyzeCalls).toBe(0);
   });
+
+  it("re-runs a single inbox image by file name when force is enabled", async () => {
+    const tempDir = await createTempDir();
+    const inboxDir = path.join(tempDir, "inbox");
+    const notesDir = path.join(tempDir, "notes");
+    const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
+    const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
+    const imagePath = path.join(inboxDir, "2026-03-24-existing.png");
+
+    await fs.ensureDir(inboxDir);
+    await fs.ensureDir(path.dirname(promptPath));
+    await fs.writeFile(promptPath, "# Analyze screenshots");
+    await fs.writeFile(imagePath, "same-content");
+
+    const hash = await sha256File(imagePath);
+    await analyzedStateStore.write({
+      byHash: {
+        [hash]: {
+          imagePath,
+          analyzedAt: "2026-03-24T12:30:00.000Z",
+          notePath: path.join(notesDir, "2026-03-24-old-note.md"),
+          model: "gpt-4.1-mini"
+        }
+      }
+    });
+
+    let analyzeCalls = 0;
+    const analyzer: ScreenshotAnalyzer = {
+      async analyze() {
+        analyzeCalls += 1;
+        return {
+          analysis: {
+            type: "website",
+            title: "Retried Note",
+            summary: "Retried analysis output.",
+            whyInteresting: "Prompt tuning test.",
+            entities: ["Retried Note"],
+            tags: ["retry"]
+          },
+          raw: {},
+          warnings: [],
+          model: "gpt-4.1-mini"
+        };
+      }
+    };
+
+    const service = createAnalyzeService({
+      analyzer,
+      analyzedStateStore,
+      inboxDir,
+      notesDir,
+      promptPath,
+      now: () => "2026-03-24T13:00:00.000Z"
+    });
+
+    const result = await service.analyze({
+      imageName: "2026-03-24-existing.png",
+      force: true
+    });
+    const noteFiles = await fs.readdir(notesDir);
+    const state = await analyzedStateStore.read();
+
+    expect(result.analyzedCount).toBe(1);
+    expect(result.skippedCount).toBe(0);
+    expect(analyzeCalls).toBe(1);
+    expect(noteFiles[0]).toMatch(/^2026-03-24-retried-note-/);
+    expect(state.byHash[hash]?.notePath).toContain("retried-note");
+  });
+
+  it("fails when a requested image name is not found in the inbox", async () => {
+    const tempDir = await createTempDir();
+    const inboxDir = path.join(tempDir, "inbox");
+    const notesDir = path.join(tempDir, "notes");
+    const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
+    const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
+
+    await fs.ensureDir(inboxDir);
+    await fs.ensureDir(path.dirname(promptPath));
+    await fs.writeFile(promptPath, "# Analyze screenshots");
+
+    const analyzer: ScreenshotAnalyzer = {
+      async analyze() {
+        throw new Error("should not be called");
+      }
+    };
+
+    const service = createAnalyzeService({
+      analyzer,
+      analyzedStateStore,
+      inboxDir,
+      notesDir,
+      promptPath
+    });
+
+    await expect(
+      service.analyze({
+        imageName: "missing.png",
+        force: true
+      })
+    ).rejects.toThrow("Image not found in inbox: missing.png");
+  });
 });

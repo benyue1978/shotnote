@@ -96,6 +96,11 @@ export type AnalyzeResult = {
   model: string;
 };
 
+export type AnalyzeRequest = {
+  imageName?: string;
+  force?: boolean;
+};
+
 export type ResolveConfigOptions = {
   env?: NodeJS.ProcessEnv;
   homeDir?: string;

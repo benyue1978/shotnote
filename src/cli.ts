@@ -11,11 +11,13 @@ import { runAnalyzeCommand } from "./commands/analyze.js";
 import { runListAlbumsCommand } from "./commands/list-albums.js";
 import { runRunCommand } from "./commands/run.js";
 import { runSyncCommand } from "./commands/sync.js";
-import { resolveConfig } from "./core/config.js";
+import { bootstrapConfigFile, resolveConfig } from "./core/config.js";
+import { getAppPaths } from "./core/paths.js";
 import { bootstrapPromptFile } from "./core/prompt-store.js";
 import { createStateStore } from "./core/state-store.js";
 import { createAnalyzeService } from "./services/analyze-service.js";
 import { createSyncService } from "./services/sync-service.js";
+import type { AnalyzeRequest } from "./core/types.js";
 
 type CliDependencies = {
   syncService: {
@@ -23,7 +25,7 @@ type CliDependencies = {
     sync(): Promise<{ newCount: number; duplicateCount: number }>;
   };
   analyzeService: {
-    analyze(): Promise<{ analyzedCount: number; skippedCount: number }>;
+    analyze(request?: AnalyzeRequest): Promise<{ analyzedCount: number; skippedCount: number }>;
   };
   writeLine?(line: string): void;
 };
@@ -57,10 +59,19 @@ export function createCli(deps: CliDependencies) {
   program
     .command("analyze")
     .description("Analyze unprocessed screenshots and write Markdown notes")
-    .action(async () => {
+    .option("--image <filename>", "Analyze or re-analyze a single image from ~/.shotnote/inbox by file name")
+    .option("--force", "Re-analyze the selected image even if it was already processed")
+    .action(async (commandOptions: { image?: string; force?: boolean }) => {
+      if (commandOptions.force && !commandOptions.image) {
+        throw new Error("--force requires --image");
+      }
+
       await runAnalyzeCommand({
         analyze: deps.analyzeService.analyze,
         writeLine
+      }, {
+        imageName: commandOptions.image,
+        force: commandOptions.force
       });
     });
 
@@ -79,14 +90,18 @@ export function createCli(deps: CliDependencies) {
 }
 
 export async function createRuntimeCli() {
-  const config = await resolveConfig();
+  const initialPaths = getAppPaths();
 
-  await fs.ensureDir(config.paths.root);
-  await fs.ensureDir(config.paths.inbox);
-  await fs.ensureDir(config.paths.notes);
-  await fs.ensureDir(config.paths.prompts);
-  await fs.ensureDir(config.paths.state);
-  await fs.ensureDir(config.paths.logs);
+  await fs.ensureDir(initialPaths.root);
+  await fs.ensureDir(initialPaths.inbox);
+  await fs.ensureDir(initialPaths.notes);
+  await fs.ensureDir(initialPaths.prompts);
+  await fs.ensureDir(initialPaths.state);
+  await fs.ensureDir(initialPaths.logs);
+  await bootstrapConfigFile(initialPaths.config);
+
+  const config = await resolveConfig();
+  await bootstrapPromptFile(config.analysis.promptPath);
 
   const photoSource = createPhotosAppSource({
     albumName: config.source.albumName,
@@ -100,12 +115,10 @@ export async function createRuntimeCli() {
   return createCli({
     syncService,
     analyzeService: {
-      async analyze() {
+      async analyze(request?: AnalyzeRequest) {
         if (!config.analysis.openAIApiKey) {
           throw new Error("Missing OPENAI_API_KEY. Set it in the environment before running analyze or run.");
         }
-
-        await bootstrapPromptFile(config.analysis.promptPath);
 
         const analyzeService = createAnalyzeService({
           analyzer: createOpenAIAnalyzer({
@@ -118,7 +131,7 @@ export async function createRuntimeCli() {
           promptPath: config.analysis.promptPath
         });
 
-        return analyzeService.analyze();
+        return analyzeService.analyze(request);
       }
     }
   });
