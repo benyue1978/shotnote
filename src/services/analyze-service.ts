@@ -42,8 +42,9 @@ export function createAnalyzeService(options: AnalyzeServiceOptions) {
 
       for (const imagePath of selectedFiles) {
         const hash = await sha256File(imagePath);
+        const previousRecord = analyzedState.byHash[hash];
 
-        if (analyzedState.byHash[hash] && !request.force) {
+        if (previousRecord && !request.force) {
           skippedCount += 1;
           continue;
         }
@@ -61,6 +62,7 @@ export function createAnalyzeService(options: AnalyzeServiceOptions) {
         });
 
         await fs.writeFile(notePath, markdown);
+        await removePreviousNote(previousRecord?.notePath, notePath);
 
         analyzedState.byHash[hash] = {
           imagePath,
@@ -79,6 +81,21 @@ export function createAnalyzeService(options: AnalyzeServiceOptions) {
       };
     }
   };
+}
+
+async function removePreviousNote(previousNotePath: string | undefined, nextNotePath: string) {
+  if (!previousNotePath || previousNotePath === nextNotePath) {
+    return;
+  }
+
+  try {
+    await fs.remove(previousNotePath);
+  } catch (error) {
+    console.warn(
+      `Failed to remove previous note file: ${previousNotePath}`,
+      error instanceof Error ? error.message : error
+    );
+  }
 }
 
 function selectImageFiles(imageFiles: string[], imageName?: string) {

@@ -204,6 +204,73 @@ describe("createAnalyzeService", () => {
     expect(state.byHash[hash]?.notePath).toContain("retried-note");
   });
 
+  it("removes the previous note file for the same hash after a forced re-run succeeds", async () => {
+    const tempDir = await createTempDir();
+    const inboxDir = path.join(tempDir, "inbox");
+    const notesDir = path.join(tempDir, "notes");
+    const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
+    const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
+    const imagePath = path.join(inboxDir, "2026-03-24-existing.png");
+    const oldNotePath = path.join(notesDir, "2026-03-24-old-note.md");
+
+    await fs.ensureDir(inboxDir);
+    await fs.ensureDir(notesDir);
+    await fs.ensureDir(path.dirname(promptPath));
+    await fs.writeFile(promptPath, "# Analyze screenshots");
+    await fs.writeFile(imagePath, "same-content");
+    await fs.writeFile(oldNotePath, "# Old note");
+
+    const hash = await sha256File(imagePath);
+    await analyzedStateStore.write({
+      byHash: {
+        [hash]: {
+          imagePath,
+          analyzedAt: "2026-03-24T12:30:00.000Z",
+          notePath: oldNotePath,
+          model: "gpt-4.1-mini"
+        }
+      }
+    });
+
+    const analyzer: ScreenshotAnalyzer = {
+      async analyze() {
+        return {
+          analysis: {
+            type: "website",
+            title: "Retried Note",
+            summary: "Retried analysis output.",
+            whyInteresting: "Prompt tuning test.",
+            entities: ["Retried Note"],
+            tags: ["retry"]
+          },
+          raw: {},
+          warnings: [],
+          model: "gpt-4.1-mini"
+        };
+      }
+    };
+
+    const service = createAnalyzeService({
+      analyzer,
+      analyzedStateStore,
+      inboxDir,
+      notesDir,
+      promptPath,
+      now: () => "2026-03-24T13:00:00.000Z"
+    });
+
+    await service.analyze({
+      imageName: "2026-03-24-existing.png",
+      force: true
+    });
+
+    const newNoteFiles = await fs.readdir(notesDir);
+
+    expect(await fs.pathExists(oldNotePath)).toBe(false);
+    expect(newNoteFiles).toHaveLength(1);
+    expect(newNoteFiles[0]).toMatch(/^2026-03-24-retried-note-/);
+  });
+
   it("fails when a requested image name is not found in the inbox", async () => {
     const tempDir = await createTempDir();
     const inboxDir = path.join(tempDir, "inbox");

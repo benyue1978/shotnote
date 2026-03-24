@@ -23,6 +23,7 @@ export type AppPaths = {
   inbox: string;
   notes: string;
   prompts: string;
+  bin: string;
   prompt: string;
   state: string;
   syncedState: string;
@@ -59,6 +60,7 @@ export type StateRecord = Record<string, string>;
 
 export type HashStateRecord = {
   imagePath: string;
+  discoveredAt?: string;
   syncedAt?: string;
   analyzedAt?: string;
   source?: string;
@@ -82,6 +84,11 @@ export type SyncResult = {
   exported: SyncedImage[];
   skippedCount: number;
   warnings: string[];
+};
+
+export type SyncRequest = {
+  limit?: number;
+  since?: string;
 };
 
 export type AnalyzeInput = {

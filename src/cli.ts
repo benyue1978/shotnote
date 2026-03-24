@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import fs from "fs-extra";
 import OpenAI from "openai";
+import { ProxyAgent } from "undici";
 import { fileURLToPath } from "node:url";
 
 import { createOpenAIAnalyzer } from "./adapters/analyzers/openai-analyzer.js";
@@ -17,12 +18,12 @@ import { bootstrapPromptFile } from "./core/prompt-store.js";
 import { createStateStore } from "./core/state-store.js";
 import { createAnalyzeService } from "./services/analyze-service.js";
 import { createSyncService } from "./services/sync-service.js";
-import type { AnalyzeRequest } from "./core/types.js";
+import type { AnalyzeRequest, SyncRequest } from "./core/types.js";
 
 type CliDependencies = {
   syncService: {
     listAlbums(): Promise<string[]>;
-    sync(): Promise<{ newCount: number; duplicateCount: number }>;
+    sync(request?: SyncRequest): Promise<{ newCount: number; duplicateCount: number }>;
   };
   analyzeService: {
     analyze(request?: AnalyzeRequest): Promise<{ analyzedCount: number; skippedCount: number }>;
@@ -34,11 +35,24 @@ export function createCli(deps: CliDependencies) {
   const program = new Command();
   const writeLine = deps.writeLine ?? console.log;
 
-  program.name("shotnote").description("Sync screenshots from Photos.app and analyze them with OpenAI.");
+  program
+    .name("shotnote")
+    .description(
+      [
+        "Sync screenshots from Photos.app and analyze them with OpenAI.",
+        "",
+        "Use --help on any subcommand before guessing behavior.",
+        "Examples:",
+        "  shotnote sync --help",
+        "  shotnote analyze --help",
+        "  shotnote run --help"
+      ].join("\n")
+    );
 
   program
     .command("list-albums")
     .description("List user-visible Photos.app albums")
+    .summary("List user-created Photos.app albums")
     .action(async () => {
       await runListAlbumsCommand({
         listAlbums: deps.syncService.listAlbums,
@@ -48,17 +62,42 @@ export function createCli(deps: CliDependencies) {
 
   program
     .command("sync")
-    .description("Sync screenshots from Photos.app into ~/.shotnote/inbox")
-    .action(async () => {
+    .description(
+      [
+        "Sync screenshots from Photos.app into ~/.shotnote/inbox.",
+        "",
+        "Examples:",
+        "  shotnote sync",
+        "  shotnote sync --limit 5",
+        "",
+        "--limit only affects the first sync. Later syncs pull everything newer than the last successful sync."
+      ].join("\n")
+    )
+    .summary("Sync screenshots from Photos.app")
+    .option("--limit <n>", "Only export the most recent N screenshots", parseInt)
+    .action(async (commandOptions: { limit?: number }) => {
       await runSyncCommand({
         sync: deps.syncService.sync,
         writeLine
+      }, {
+        limit: commandOptions.limit
       });
     });
 
   program
     .command("analyze")
-    .description("Analyze unprocessed screenshots and write Markdown notes")
+    .description(
+      [
+        "Analyze screenshots already synced into ~/.shotnote/inbox and write Markdown notes to ~/.shotnote/notes.",
+        "",
+        "Examples:",
+        "  shotnote analyze",
+        "  shotnote analyze --image 2026-03-24-example.png --force",
+        "",
+        "Use the second form when tuning ~/.shotnote/prompts/analyze-screenshot.md."
+      ].join("\n")
+    )
+    .summary("Analyze screenshots already synced into ~/.shotnote/inbox")
     .option("--image <filename>", "Analyze or re-analyze a single image from ~/.shotnote/inbox by file name")
     .option("--force", "Re-analyze the selected image even if it was already processed")
     .action(async (commandOptions: { image?: string; force?: boolean }) => {
@@ -77,12 +116,24 @@ export function createCli(deps: CliDependencies) {
 
   program
     .command("run")
-    .description("Run sync followed by analyze")
-    .action(async () => {
+    .description(
+      [
+        "Run sync followed by analyze.",
+        "",
+        "Examples:",
+        "  shotnote run",
+        "  shotnote run --limit 5"
+      ].join("\n")
+    )
+    .summary("Run sync followed by analyze")
+    .option("--limit <n>", "Only export the most recent N screenshots during sync", parseInt)
+    .action(async (commandOptions: { limit?: number }) => {
       await runRunCommand({
         sync: deps.syncService.sync,
         analyze: deps.analyzeService.analyze,
         writeLine
+      }, {
+        limit: commandOptions.limit
       });
     });
 
@@ -96,6 +147,7 @@ export async function createRuntimeCli() {
   await fs.ensureDir(initialPaths.inbox);
   await fs.ensureDir(initialPaths.notes);
   await fs.ensureDir(initialPaths.prompts);
+  await fs.ensureDir(initialPaths.bin);
   await fs.ensureDir(initialPaths.state);
   await fs.ensureDir(initialPaths.logs);
   await bootstrapConfigFile(initialPaths.config);
@@ -105,7 +157,8 @@ export async function createRuntimeCli() {
 
   const photoSource = createPhotosAppSource({
     albumName: config.source.albumName,
-    inboxDir: config.paths.inbox
+    inboxDir: config.paths.inbox,
+    helperBinDir: config.paths.bin
   });
   const syncService = createSyncService({
     source: photoSource,
@@ -143,7 +196,22 @@ async function main() {
 }
 
 function createOpenAIClient(apiKey?: string) {
-  return new OpenAI({ apiKey });
+  const proxyUrl =
+    process.env.https_proxy ??
+    process.env.HTTPS_PROXY ??
+    process.env.http_proxy ??
+    process.env.HTTP_PROXY ??
+    process.env.all_proxy ??
+    process.env.ALL_PROXY;
+
+  return new OpenAI({
+    apiKey,
+    fetchOptions: proxyUrl
+      ? {
+          dispatcher: new ProxyAgent(proxyUrl)
+        }
+      : undefined
+  });
 }
 
 const isEntrypoint = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];

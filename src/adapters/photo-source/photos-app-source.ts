@@ -8,21 +8,31 @@ import fs from "fs-extra";
 
 import { sha256File } from "../../core/hashing.js";
 import { toSlug } from "../../core/slug.js";
-import type { SyncResult, SyncedImage } from "../../core/types.js";
+import type { SyncRequest, SyncResult, SyncedImage } from "../../core/types.js";
 import type { ImageSource } from "./photo-source.js";
+import { ensureSwiftHelper, runSwiftHelperBinary } from "./swift-helper.js";
 
 type RunAppleScript = (scriptPath: string, args: string[]) => Promise<string>;
+type RunSwiftHelper = (binaryPath: string, args: string[]) => Promise<string>;
+type EnsureSwiftHelper = (options: { sourceScriptPath: string; helperBinDir: string }) => Promise<string>;
 
 type PhotosAppSourceOptions = {
   albumName: string;
   inboxDir: string;
+  helperBinDir?: string;
   now?: () => string;
   runAppleScript?: RunAppleScript;
+  runSwiftHelper?: RunSwiftHelper;
+  ensureSwiftHelper?: EnsureSwiftHelper;
 };
 
 const defaultScriptPath = path.join(
   path.dirname(fileURLToPath(import.meta.url)),
   "export-screenshots.applescript"
+);
+const defaultSwiftHelperPath = path.join(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "export-smart-screenshots.swift"
 );
 
 export function parseAlbumListOutput(output: string) {
@@ -39,27 +49,60 @@ export function parseExportOutput(output: string) {
     .filter(Boolean);
 }
 
+type ExportedRecord = {
+  path: string;
+  discoveredAt?: string;
+};
+
+export function parseExportRecords(output: string): ExportedRecord[] {
+  return parseExportOutput(output).map((line) => {
+    const [filePath, discoveredAt] = line.split("\t");
+
+    return {
+      path: filePath!,
+      discoveredAt
+    };
+  });
+}
+
 export function createPhotosAppSource(options: PhotosAppSourceOptions): ImageSource {
   const runAppleScript = options.runAppleScript ?? defaultRunAppleScript;
+  const runSwiftHelper = options.runSwiftHelper ?? defaultRunSwiftHelper;
+  const ensureHelper = options.ensureSwiftHelper ?? ensureSwiftHelper;
 
   return {
     async listAlbums() {
       const output = await runAppleScript(defaultScriptPath, ["list-albums"]);
       return parseAlbumListOutput(output);
     },
-    async syncNewImages() {
+    async syncNewImages(request?: SyncRequest) {
       await fs.ensureDir(options.inboxDir);
       const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), "shotnote-photos-export-"));
 
       try {
-        const output = await runAppleScript(defaultScriptPath, ["sync", options.albumName, tempDir]);
-        const exportedPaths = parseExportOutput(output);
+        const output =
+          options.albumName === "Screenshots"
+            ? await runSwiftHelper(
+                await ensureHelper({
+                  sourceScriptPath: defaultSwiftHelperPath,
+                  helperBinDir: options.helperBinDir ?? path.join(os.homedir(), ".shotnote", "bin")
+                }),
+                [
+                  "export-screenshots",
+                  tempDir,
+                  String(request?.limit ?? 0),
+                  ...(request?.since ? [request.since] : [])
+                ]
+              )
+            : await runAppleScript(defaultScriptPath, ["sync", options.albumName, tempDir]);
+        const exportedRecords = parseExportRecords(output);
         const knownHashes = await getInboxHashes(options.inboxDir);
-        const discoveredCount = exportedPaths.length;
+        const discoveredCount = exportedRecords.length;
         const exported: SyncedImage[] = [];
         let skippedCount = 0;
 
-        for (const exportedPath of exportedPaths) {
+        for (const exportedRecord of exportedRecords) {
+          const exportedPath = exportedRecord.path;
           const hash = await sha256File(exportedPath);
 
           if (knownHashes.has(hash)) {
@@ -69,7 +112,11 @@ export function createPhotosAppSource(options: PhotosAppSourceOptions): ImageSou
 
           const destinationPath = path.join(
             options.inboxDir,
-            buildInboxFileName(exportedPath, hash, options.now?.() ?? new Date().toISOString())
+            buildInboxFileName(
+              exportedPath,
+              hash,
+              exportedRecord.discoveredAt ?? options.now?.() ?? new Date().toISOString()
+            )
           );
 
           await fs.move(exportedPath, destinationPath, { overwrite: false });
@@ -77,7 +124,8 @@ export function createPhotosAppSource(options: PhotosAppSourceOptions): ImageSou
           exported.push({
             originalPath: exportedPath,
             imagePath: destinationPath,
-            hash
+            hash,
+            discoveredAt: exportedRecord.discoveredAt
           });
         }
 
@@ -97,6 +145,10 @@ export function createPhotosAppSource(options: PhotosAppSourceOptions): ImageSou
 async function defaultRunAppleScript(scriptPath: string, args: string[]) {
   const result = await execa("osascript", [scriptPath, ...args]);
   return result.stdout;
+}
+
+async function defaultRunSwiftHelper(binaryPath: string, args: string[]) {
+  return runSwiftHelperBinary(binaryPath, args);
 }
 
 async function getInboxHashes(inboxDir: string) {

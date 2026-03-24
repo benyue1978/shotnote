@@ -1,27 +1,49 @@
 # Shotnote
 
-`shotnote` is a macOS-only CLI that pulls screenshots from `Photos.app` and writes one Markdown note per image using an OpenAI vision model.
+`shotnote` is a macOS-only CLI that pulls screenshots from `Photos.app` and turns each image into a Markdown note with an OpenAI vision model.
 
-## Commands
+It is built for a simple workflow:
+
+1. Capture screenshots on your phone.
+2. Let iCloud Photos sync them to your Mac.
+3. Run `shotnote` to pull new screenshots into `~/.shotnote/inbox/`.
+4. Generate one note per image in `~/.shotnote/notes/`.
+
+## Requirements
+
+- macOS
+- Node.js 20+
+- `Photos.app` with your screenshots already synced
+- Xcode Command Line Tools so `xcrun swift` is available
+- An OpenAI API key
+
+Install Command Line Tools if needed:
+
+```bash
+xcode-select --install
+```
+
+## Install
+
+Shotnote is not published to npm yet. Install it from source:
+
+```bash
+pnpm install
+pnpm build
+pnpm link --global
+```
+
+After that, the `shotnote` command is available in your shell.
+
+## Quick Start
+
+Run any Shotnote command once to bootstrap the working directory:
 
 ```bash
 shotnote list-albums
-shotnote sync
-shotnote analyze
-shotnote run
 ```
 
-For prompt testing or one-off retries, you can re-analyze a single image already in `~/.shotnote/inbox/`:
-
-```bash
-shotnote analyze --image 2026-03-24-existing.png --force
-```
-
-`--image` only accepts a file name from `~/.shotnote/inbox/`. `--force` requires `--image`.
-
-## Working Directory
-
-Shotnote manages files under `~/.shotnote/`:
+This creates:
 
 ```text
 ~/.shotnote/
@@ -33,21 +55,11 @@ Shotnote manages files under `~/.shotnote/`:
 │   ├── synced.json
 │   └── analyzed.json
 ├── logs/
+├── bin/
 └── config.json
 ```
 
-The tool creates missing directories automatically.
-
-## Setup
-
-1. Make sure your iPhone screenshots are synced into `Photos.app`.
-2. Export an OpenAI API key in your shell:
-
-```bash
-export OPENAI_API_KEY=your_key_here
-```
-
-3. Optionally create `~/.shotnote/config.json`:
+Then edit `~/.shotnote/config.json` and add your API key:
 
 ```json
 {
@@ -64,25 +76,155 @@ export OPENAI_API_KEY=your_key_here
 }
 ```
 
-If both are present, `OPENAI_API_KEY` overrides `analysis.apiKey` from `config.json`.
+Now try a small sync first:
 
-You can also override some values with environment variables:
+```bash
+shotnote sync --limit 5
+shotnote analyze
+```
 
+Use `shotnote sync --limit 5` for the first sync bootstrap. After that, use `shotnote sync` for normal incremental syncing.
+
+Or run both steps together:
+
+```bash
+shotnote run --limit 5
+```
+
+On the first sync, macOS may ask for permission to access your photo library. Grant it.
+
+## Config
+
+Shotnote reads configuration from:
+
+- `~/.shotnote/config.json`
+- environment variables
+
+Environment variables override `config.json`:
+
+- `OPENAI_API_KEY`
 - `SHOTNOTE_ALBUM_NAME`
 - `SHOTNOTE_MODEL`
 - `SHOTNOTE_PROMPT_PATH`
-- `OPENAI_API_KEY`
+
+If you use a network proxy to reach OpenAI, set standard proxy variables before running Shotnote:
+
+- `https_proxy`
+- `http_proxy`
+- `all_proxy`
+
+Example:
+
+```bash
+export https_proxy=http://127.0.0.1:7897
+export http_proxy=http://127.0.0.1:7897
+export all_proxy=socks5://127.0.0.1:7897
+```
+
+## Commands
+
+### `shotnote sync`
+
+Pull new screenshots from `Photos.app` into `~/.shotnote/inbox/`.
+
+```bash
+shotnote sync --limit 20
+shotnote sync
+```
+
+`--limit` only affects the first sync. After Shotnote has synced once, later syncs pull everything newer than the last successful sync.
+
+Recommended pattern:
+
+- first sync: `shotnote sync --limit 20`
+- later syncs: `shotnote sync`
+
+By default, Shotnote reads from the system `Screenshots` collection. This is a smart collection in `Photos.app`, not a normal user album.
+
+### `shotnote analyze`
+
+Analyze screenshots already in `~/.shotnote/inbox/` and write Markdown notes into `~/.shotnote/notes/`.
+
+```bash
+shotnote analyze
+```
+
+To re-run one image after changing the prompt:
+
+```bash
+shotnote analyze --image 2026-03-24-existing.png --force
+```
+
+`--image` only accepts a file name from `~/.shotnote/inbox/`. `--force` requires `--image`.
+
+When you force a re-run for the same image, Shotnote keeps only the latest note for that image hash.
+
+### `shotnote run`
+
+Run `sync` and then `analyze`:
+
+```bash
+shotnote run
+shotnote run --limit 10
+```
+
+### `shotnote list-albums`
+
+List user-created albums in `Photos.app`:
+
+```bash
+shotnote list-albums
+```
+
+Use this when you want to point Shotnote at a custom album with `SHOTNOTE_ALBUM_NAME` or `config.json`.
+
+`Screenshots` usually does not appear here because it is a system smart collection, not a user-created album.
 
 ## Prompt Tuning
 
-The analysis prompt lives at `~/.shotnote/prompts/analyze-screenshot.md`.
+Shotnote stores the analysis prompt in:
 
-If it does not exist, `shotnote analyze` or `shotnote run` will create it from the built-in default prompt. You can edit this file directly to tune how screenshots are classified and summarized.
+```text
+~/.shotnote/prompts/analyze-screenshot.md
+```
+
+The file is created automatically on first run. Edit it directly to change classification and summary behavior, then re-run one image:
+
+```bash
+shotnote analyze --image 2026-03-24-existing.png --force
+```
+
+## Troubleshooting
+
+### `Screenshots` does not appear in `shotnote list-albums`
+
+That is expected. `list-albums` only shows user-created albums. The default `Screenshots` source is handled separately.
+
+### Sync is slow on the first run
+
+Use `--limit`:
+
+```bash
+shotnote sync --limit 5
+```
+
+This limit is only for the initial sync bootstrap. After the first successful sync, use `shotnote sync`.
+
+### `analyze` skips images even after you deleted note files
+
+Shotnote tracks processed images in `~/.shotnote/state/analyzed.json`. Re-run a single image with:
+
+```bash
+shotnote analyze --image <filename> --force
+```
+
+### OpenAI requests fail but your API key is correct
+
+Check your proxy settings and try exporting `https_proxy`, `http_proxy`, or `all_proxy` before running Shotnote.
 
 ## Development
 
 ```bash
-pnpm install
 pnpm test
 pnpm build
 ```

@@ -2,7 +2,7 @@ import os from "node:os";
 import path from "node:path";
 
 import fs from "fs-extra";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { ImageSource } from "../adapters/photo-source/photo-source.js";
 import { createStateStore } from "../core/state-store.js";
@@ -97,8 +97,74 @@ describe("createSyncService", () => {
     expect(result.duplicateCount).toBe(1);
     expect(state.byHash["new-hash"]).toEqual({
       imagePath: "/tmp/new.png",
+      discoveredAt: undefined,
       syncedAt: "2026-03-24T12:30:00.000Z",
       source: "photos-album"
     });
   });
+
+  it("uses limit only on the first sync", async () => {
+    const tempDir = await createTempDir();
+    const stateStore = createStateStore(path.join(tempDir, "synced.json"));
+    const syncNewImages = afterFirstCallResult();
+
+    const source: ImageSource = {
+      async listAlbums() {
+        return [];
+      },
+      syncNewImages
+    };
+
+    const service = createSyncService({
+      source,
+      syncedStateStore: stateStore,
+      now: () => "2026-03-24T12:30:00.000Z"
+    });
+
+    await service.sync({ limit: 5 });
+
+    expect(syncNewImages).toHaveBeenCalledWith({ limit: 5 });
+  });
+
+  it("uses the latest sync time as the cutoff after the first sync", async () => {
+    const tempDir = await createTempDir();
+    const stateStore = createStateStore(path.join(tempDir, "synced.json"));
+    const syncNewImages = afterFirstCallResult();
+
+    await stateStore.write({
+      byHash: {
+        known: {
+          imagePath: "/tmp/existing.png",
+          syncedAt: "2026-03-24T12:30:00.000Z",
+          source: "photos-album"
+        }
+      }
+    });
+
+    const source: ImageSource = {
+      async listAlbums() {
+        return [];
+      },
+      syncNewImages
+    };
+
+    const service = createSyncService({
+      source,
+      syncedStateStore: stateStore,
+      now: () => "2026-03-24T13:00:00.000Z"
+    });
+
+    await service.sync({ limit: 5 });
+
+    expect(syncNewImages).toHaveBeenCalledWith({ since: "2026-03-24T12:30:00.000Z" });
+  });
 });
+
+function afterFirstCallResult() {
+  return vi.fn().mockResolvedValue({
+    discoveredCount: 0,
+    exported: [],
+    skippedCount: 0,
+    warnings: []
+  });
+}
