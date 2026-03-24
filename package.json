@@ -1,0 +1,33 @@
+{
+  "name": "shotnote",
+  "version": "0.1.0",
+  "description": "CLI for syncing screenshots from Photos.app and generating markdown notes with OpenAI vision.",
+  "type": "module",
+  "bin": {
+    "shotnote": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/cli.ts",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "commander": "^14.0.0",
+    "execa": "^9.6.0",
+    "fast-glob": "^3.3.3",
+    "fs-extra": "^11.3.0",
+    "openai": "^6.0.1",
+    "slugify": "^1.6.6",
+    "zod": "^4.1.11"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^24.6.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
