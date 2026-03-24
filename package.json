@@ -7,7 +7,7 @@
     "shotnote": "dist/cli.js"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && mkdir -p dist/adapters/photo-source && cp src/adapters/photo-source/export-screenshots.applescript dist/adapters/photo-source/export-screenshots.applescript",
     "dev": "tsx src/cli.ts",
     "test": "vitest run"
   },

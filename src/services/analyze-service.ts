@@ -2,11 +2,11 @@ import path from "node:path";
 
 import fg from "fast-glob";
 import fs from "fs-extra";
-import slugify from "slugify";
 
 import type { ScreenshotAnalyzer } from "../adapters/analyzers/analyzer.js";
 import { renderMarkdownNote } from "../core/markdown.js";
 import { sha256File } from "../core/hashing.js";
+import { toSlug } from "../core/slug.js";
 import type { HashState } from "../core/types.js";
 
 const supportedExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".heic"]);
@@ -82,11 +82,7 @@ export function createAnalyzeService(options: AnalyzeServiceOptions) {
 
 function buildNoteFileName(title: string, hash: string, analyzedAt: string) {
   const datePrefix = analyzedAt.slice(0, 10);
-  const slug = slugify(title, {
-    lower: true,
-    strict: true,
-    trim: true
-  }) || "note";
+  const slug = toSlug(title) || "note";
 
   return `${datePrefix}-${slug}-${hash.slice(0, 6)}.md`;
 }
