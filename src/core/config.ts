@@ -5,7 +5,7 @@ import type { ResolveConfigOptions, ShotnoteConfig } from "./types.js";
 
 type ConfigFileShape = Partial<{
   source: Partial<ShotnoteConfig["source"]>;
-  analysis: Partial<Omit<ShotnoteConfig["analysis"], "openAIApiKey">>;
+  analysis: Partial<Omit<ShotnoteConfig["analysis"], "openAIApiKey">> & Partial<{ apiKey: string }>;
 }>;
 
 export async function resolveConfig(options: ResolveConfigOptions = {}): Promise<ShotnoteConfig> {
@@ -47,7 +47,7 @@ export async function resolveConfig(options: ResolveConfigOptions = {}): Promise
       provider: "openai",
       model,
       promptPath,
-      openAIApiKey: env.OPENAI_API_KEY
+      openAIApiKey: env.OPENAI_API_KEY ?? fileConfig.analysis?.apiKey
     }
   };
 }

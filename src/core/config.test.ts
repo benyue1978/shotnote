@@ -38,7 +38,7 @@ describe("resolveConfig", () => {
     await fs.ensureDir(path.dirname(configPath));
     await fs.writeJson(configPath, {
       source: { albumName: "截屏" },
-      analysis: { model: "gpt-4.1", promptPath: "~/custom-prompt.md" }
+      analysis: { model: "gpt-4.1", promptPath: "~/custom-prompt.md", apiKey: "config-key" }
     });
 
     const config = await resolveConfig({ homeDir });
@@ -46,6 +46,7 @@ describe("resolveConfig", () => {
     expect(config.source.albumName).toBe("截屏");
     expect(config.analysis.model).toBe("gpt-4.1");
     expect(config.analysis.promptPath).toBe(path.join(homeDir, "custom-prompt.md"));
+    expect(config.analysis.openAIApiKey).toBe("config-key");
   });
 
   it("prefers environment variables over config file values", async () => {

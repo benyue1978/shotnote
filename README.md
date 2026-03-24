@@ -50,10 +50,13 @@ export OPENAI_API_KEY=your_key_here
   "analysis": {
     "provider": "openai",
     "model": "gpt-4.1-mini",
-    "promptPath": "~/.shotnote/prompts/analyze-screenshot.md"
+    "promptPath": "~/.shotnote/prompts/analyze-screenshot.md",
+    "apiKey": "your_key_here"
   }
 }
 ```
+
+If both are present, `OPENAI_API_KEY` overrides `analysis.apiKey` from `config.json`.
 
 You can also override some values with environment variables:
 
