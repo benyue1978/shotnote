@@ -30,8 +30,8 @@ describe("parseAlbumListOutput", () => {
 
 describe("parseExportRecords", () => {
   it("returns exported file records line by line", () => {
-    expect(parseExportRecords("/tmp/a.png\t2026-03-20\n/tmp/b.png\n")).toEqual([
-      { path: "/tmp/a.png", discoveredAt: "2026-03-20" },
+    expect(parseExportRecords("/tmp/a.png\t2026-03-20T12:30:00.000Z\n/tmp/b.png\n")).toEqual([
+      { path: "/tmp/a.png", discoveredAt: "2026-03-20T12:30:00.000Z" },
       { path: "/tmp/b.png", discoveredAt: undefined }
     ]);
   });
@@ -69,7 +69,7 @@ describe("createPhotosAppSource", () => {
           await fs.ensureDir(exportedDir);
           await fs.writeFile(firstExport, "same-content");
           await fs.writeFile(secondExport, "new-content");
-          return `${firstExport}\t2026-03-20\n${secondExport}\t2026-03-21\n`;
+          return `${firstExport}\t2026-03-20T10:00:00.000Z\n${secondExport}\t2026-03-21T10:00:00.000Z\n`;
         }
 
         return "";
@@ -96,7 +96,7 @@ describe("createPhotosAppSource", () => {
     const runSwiftHelper = vi.fn().mockImplementation(async () => {
       await fs.ensureDir(exportedDir);
       await fs.writeFile(exportedFile, "new-content");
-      return `${exportedFile}\t2026-03-18\n`;
+      return `${exportedFile}\t2026-03-18T12:00:00.000Z\n`;
     });
     const ensureSwiftHelper = vi.fn().mockResolvedValue(path.join(tempDir, "bin", "shotnote-photos-helper"));
     const runAppleScript = vi.fn();
@@ -133,7 +133,7 @@ describe("createPhotosAppSource", () => {
     const runSwiftHelper = vi.fn().mockImplementation(async () => {
       await fs.ensureDir(exportedDir);
       await fs.writeFile(exportedFile, "new-content");
-      return `${exportedFile}\t2026-03-18\n`;
+      return `${exportedFile}\t2026-03-18T12:00:00.000Z\n`;
     });
 
     const source = createPhotosAppSource({
@@ -160,7 +160,7 @@ describe("createPhotosAppSource", () => {
     const runSwiftHelper = vi.fn().mockImplementation(async () => {
       await fs.ensureDir(exportedDir);
       await fs.writeFile(exportedFile, "new-content");
-      return `${exportedFile}\t2026-03-24\n`;
+      return `${exportedFile}\t2026-03-24T12:45:00.000Z\n`;
     });
 
     const source = createPhotosAppSource({

@@ -18,12 +18,13 @@ import { bootstrapPromptFile } from "./core/prompt-store.js";
 import { createStateStore } from "./core/state-store.js";
 import { createAnalyzeService } from "./services/analyze-service.js";
 import { createSyncService } from "./services/sync-service.js";
-import type { AnalyzeRequest, SyncRequest } from "./core/types.js";
+import type { AnalyzeRequest, SyncRequest, SyncSummary } from "./core/types.js";
 
 type CliDependencies = {
+  sourceLabel: string;
   syncService: {
     listAlbums(): Promise<string[]>;
-    sync(request?: SyncRequest): Promise<{ newCount: number; duplicateCount: number }>;
+    sync(request?: SyncRequest): Promise<SyncSummary>;
   };
   analyzeService: {
     analyze(request?: AnalyzeRequest): Promise<{ analyzedCount: number; skippedCount: number }>;
@@ -78,7 +79,8 @@ export function createCli(deps: CliDependencies) {
     .action(async (commandOptions: { limit?: number }) => {
       await runSyncCommand({
         sync: deps.syncService.sync,
-        writeLine
+        writeLine,
+        sourceLabel: deps.sourceLabel
       }, {
         limit: commandOptions.limit
       });
@@ -166,6 +168,7 @@ export async function createRuntimeCli() {
   });
 
   return createCli({
+    sourceLabel: config.source.albumName,
     syncService,
     analyzeService: {
       async analyze(request?: AnalyzeRequest) {

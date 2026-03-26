@@ -21,12 +21,10 @@ enum HelperError: Error, CustomStringConvertible {
     }
 }
 
-let dateFormatter: DateFormatter = {
-    let formatter = DateFormatter()
-    formatter.calendar = Calendar(identifier: .gregorian)
-    formatter.locale = Locale(identifier: "en_US_POSIX")
+let timestampFormatter: ISO8601DateFormatter = {
+    let formatter = ISO8601DateFormatter()
     formatter.timeZone = TimeZone(secondsFromGMT: 0)
-    formatter.dateFormat = "yyyy-MM-dd"
+    formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     return formatter
 }()
 
@@ -111,7 +109,7 @@ func exportScreenshots(to exportDirectory: URL, limit: Int?, since: Date?, compl
                     if let error, firstError == nil {
                         firstError = HelperError.resourceWriteFailed(error.localizedDescription)
                     } else {
-                        let discoveredAt = asset.creationDate.map { dateFormatter.string(from: $0) } ?? ""
+                        let discoveredAt = asset.creationDate.map { timestampFormatter.string(from: $0) } ?? ""
                         exportedPaths.append("\(destinationURL.path)\t\(discoveredAt)")
                     }
                     group.leave()
@@ -139,7 +137,9 @@ guard CommandLine.arguments.count >= 3,
 let semaphore = DispatchSemaphore(value: 0)
 let exportDirectory = URL(fileURLWithPath: CommandLine.arguments[2], isDirectory: true)
 let limit = CommandLine.arguments.count >= 4 ? Int(CommandLine.arguments[3]) : nil
-let since = CommandLine.arguments.count >= 5 ? ISO8601DateFormatter().date(from: CommandLine.arguments[4]) : nil
+let sinceFormatter = ISO8601DateFormatter()
+sinceFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+let since = CommandLine.arguments.count >= 5 ? sinceFormatter.date(from: CommandLine.arguments[4]) : nil
 
 exportScreenshots(to: exportDirectory, limit: limit, since: since) { result in
     if case .failure(let error) = result {

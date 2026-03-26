@@ -4,6 +4,7 @@ import { createCli } from "./cli.js";
 
 function createTestCli() {
   return createCli({
+    sourceLabel: "Screenshots",
     syncService: {
       listAlbums: vi.fn(),
       sync: vi.fn()
@@ -20,6 +21,7 @@ describe("createCli", () => {
     const listAlbums = vi.fn().mockResolvedValue(["Screenshots"]);
     const writeLine = vi.fn();
     const cli = createCli({
+      sourceLabel: "Screenshots",
       syncService: {
         listAlbums,
         sync: vi.fn()
@@ -43,6 +45,7 @@ describe("createCli", () => {
       return { newCount: 1, duplicateCount: 0 };
     });
     const cli = createCli({
+      sourceLabel: "Screenshots",
       syncService: {
         listAlbums: vi.fn(),
         sync
@@ -65,6 +68,7 @@ describe("createCli", () => {
   it("passes image and force flags to analyze", async () => {
     const analyze = vi.fn().mockResolvedValue({ analyzedCount: 1, skippedCount: 0 });
     const cli = createCli({
+      sourceLabel: "Screenshots",
       syncService: {
         listAlbums: vi.fn(),
         sync: vi.fn()
@@ -85,6 +89,7 @@ describe("createCli", () => {
 
   it("rejects force without image", async () => {
     const cli = createCli({
+      sourceLabel: "Screenshots",
       syncService: {
         listAlbums: vi.fn(),
         sync: vi.fn()
@@ -101,8 +106,9 @@ describe("createCli", () => {
   });
 
   it("passes limit to sync", async () => {
-    const sync = vi.fn().mockResolvedValue({ newCount: 1, duplicateCount: 0 });
+    const sync = vi.fn().mockResolvedValue({ newCount: 1, duplicateCount: 0, syncMode: "initial" });
     const cli = createCli({
+      sourceLabel: "Screenshots",
       syncService: {
         listAlbums: vi.fn(),
         sync
@@ -119,8 +125,9 @@ describe("createCli", () => {
   });
 
   it("passes limit to run via sync", async () => {
-    const sync = vi.fn().mockResolvedValue({ newCount: 1, duplicateCount: 0 });
+    const sync = vi.fn().mockResolvedValue({ newCount: 1, duplicateCount: 0, syncMode: "initial" });
     const cli = createCli({
+      sourceLabel: "Screenshots",
       syncService: {
         listAlbums: vi.fn(),
         sync

@@ -75,10 +75,11 @@ describe("createSyncService", () => {
             {
               originalPath: "/tmp/new.png",
               imagePath: "/tmp/new.png",
-              hash: "new-hash"
+              hash: "new-hash",
+              discoveredAt: "2026-03-24T12:15:00.000Z"
             }
           ],
-          skippedCount: 0,
+          skippedCount: 3,
           warnings: []
         };
       }
@@ -95,9 +96,11 @@ describe("createSyncService", () => {
 
     expect(result.newCount).toBe(1);
     expect(result.duplicateCount).toBe(1);
+    expect(result.discoveredCount).toBe(2);
+    expect(result.sourceSkippedCount).toBe(3);
     expect(state.byHash["new-hash"]).toEqual({
       imagePath: "/tmp/new.png",
-      discoveredAt: undefined,
+      discoveredAt: "2026-03-24T12:15:00.000Z",
       syncedAt: "2026-03-24T12:30:00.000Z",
       source: "photos-album"
     });
@@ -126,7 +129,41 @@ describe("createSyncService", () => {
     expect(syncNewImages).toHaveBeenCalledWith({ limit: 5 });
   });
 
-  it("uses the latest sync time as the cutoff after the first sync", async () => {
+  it("uses the latest precise discovered time as the cutoff after the first sync", async () => {
+    const tempDir = await createTempDir();
+    const stateStore = createStateStore(path.join(tempDir, "synced.json"));
+    const syncNewImages = afterFirstCallResult();
+
+    await stateStore.write({
+      byHash: {
+        known: {
+          imagePath: "/tmp/existing.png",
+          discoveredAt: "2026-03-24T12:20:00.000Z",
+          syncedAt: "2026-03-24T12:30:00.000Z",
+          source: "photos-album"
+        }
+      }
+    });
+
+    const source: ImageSource = {
+      async listAlbums() {
+        return [];
+      },
+      syncNewImages
+    };
+
+    const service = createSyncService({
+      source,
+      syncedStateStore: stateStore,
+      now: () => "2026-03-24T13:00:00.000Z"
+    });
+
+    await service.sync({ limit: 5 });
+
+    expect(syncNewImages).toHaveBeenCalledWith({ since: "2026-03-24T12:20:00.000Z" });
+  });
+
+  it("falls back to syncedAt when discoveredAt is missing", async () => {
     const tempDir = await createTempDir();
     const stateStore = createStateStore(path.join(tempDir, "synced.json"));
     const syncNewImages = afterFirstCallResult();
@@ -154,7 +191,41 @@ describe("createSyncService", () => {
       now: () => "2026-03-24T13:00:00.000Z"
     });
 
-    await service.sync({ limit: 5 });
+    await service.sync();
+
+    expect(syncNewImages).toHaveBeenCalledWith({ since: "2026-03-24T12:30:00.000Z" });
+  });
+
+  it("falls back to syncedAt when discoveredAt only has day precision", async () => {
+    const tempDir = await createTempDir();
+    const stateStore = createStateStore(path.join(tempDir, "synced.json"));
+    const syncNewImages = afterFirstCallResult();
+
+    await stateStore.write({
+      byHash: {
+        known: {
+          imagePath: "/tmp/existing.png",
+          discoveredAt: "2026-03-24",
+          syncedAt: "2026-03-24T12:30:00.000Z",
+          source: "photos-album"
+        }
+      }
+    });
+
+    const source: ImageSource = {
+      async listAlbums() {
+        return [];
+      },
+      syncNewImages
+    };
+
+    const service = createSyncService({
+      source,
+      syncedStateStore: stateStore,
+      now: () => "2026-03-24T13:00:00.000Z"
+    });
+
+    await service.sync();
 
     expect(syncNewImages).toHaveBeenCalledWith({ since: "2026-03-24T12:30:00.000Z" });
   });

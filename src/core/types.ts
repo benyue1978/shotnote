@@ -86,6 +86,17 @@ export type SyncResult = {
   warnings: string[];
 };
 
+export type SyncMode = "initial" | "incremental";
+
+export type SyncSummary = {
+  discoveredCount: number;
+  sourceSkippedCount: number;
+  newCount: number;
+  duplicateCount: number;
+  syncMode: SyncMode;
+  effectiveRequest?: SyncRequest;
+};
+
 export type SyncRequest = {
   limit?: number;
   since?: string;
