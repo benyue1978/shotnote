@@ -303,4 +303,75 @@ describe("createAnalyzeService", () => {
       })
     ).rejects.toThrow("Image not found in inbox: missing.png");
   });
+
+  it("emits progress events for processing, done, and skipped items", async () => {
+    const tempDir = await createTempDir();
+    const inboxDir = path.join(tempDir, "inbox");
+    const notesDir = path.join(tempDir, "notes");
+    const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
+    const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
+    const firstImagePath = path.join(inboxDir, "2026-03-24-a.png");
+    const secondImagePath = path.join(inboxDir, "2026-03-24-b.png");
+
+    await fs.ensureDir(inboxDir);
+    await fs.ensureDir(path.dirname(promptPath));
+    await fs.writeFile(promptPath, "# Analyze screenshots");
+    await fs.writeFile(firstImagePath, "first-image");
+    await fs.writeFile(secondImagePath, "second-image");
+
+    const secondHash = await sha256File(secondImagePath);
+    await analyzedStateStore.write({
+      byHash: {
+        [secondHash]: {
+          imagePath: secondImagePath,
+          analyzedAt: "2026-03-24T12:30:00.000Z",
+          notePath: "/tmp/second.md",
+          model: "gpt-4.1-mini"
+        }
+      }
+    });
+
+    const analyzer: ScreenshotAnalyzer = {
+      async analyze() {
+        return {
+          analysis: {
+            type: "tool",
+            title: "First Image",
+            summary: "Processed.",
+            whyInteresting: "Useful.",
+            entities: ["First"],
+            tags: ["tool"]
+          },
+          raw: {},
+          warnings: [],
+          model: "gpt-4.1-mini"
+        };
+      }
+    };
+
+    const progressEvents: string[] = [];
+    const service = createAnalyzeService({
+      analyzer,
+      analyzedStateStore,
+      inboxDir,
+      notesDir,
+      promptPath,
+      now: () => "2026-03-24T13:00:00.000Z"
+    });
+
+    await service.analyze({}, (event) => {
+      if (event.kind === "start") {
+        progressEvents.push(`start:${event.total}:${event.pending}:${event.skipped}`);
+        return;
+      }
+
+      progressEvents.push(`${event.index}/${event.total}:${event.state}:${event.imageName}`);
+    });
+
+    expect(progressEvents).toEqual([
+      "start:2:1:1",
+      "1/1:processing:2026-03-24-a.png",
+      "1/1:done:2026-03-24-a.png"
+    ]);
+  });
 });

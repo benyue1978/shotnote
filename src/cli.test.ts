@@ -81,10 +81,12 @@ describe("createCli", () => {
 
     await cli.parseAsync(["node", "shotnote", "analyze", "--image", "2026-03-24-existing.png", "--force"]);
 
-    expect(analyze).toHaveBeenCalledWith({
+    expect(analyze).toHaveBeenCalledTimes(1);
+    expect(analyze.mock.calls[0]?.[0]).toEqual({
       imageName: "2026-03-24-existing.png",
       force: true
     });
+    expect(typeof analyze.mock.calls[0]?.[1]).toBe("function");
   });
 
   it("rejects force without image", async () => {

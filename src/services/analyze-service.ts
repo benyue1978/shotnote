@@ -7,7 +7,7 @@ import type { ScreenshotAnalyzer } from "../adapters/analyzers/analyzer.js";
 import { renderMarkdownNote } from "../core/markdown.js";
 import { sha256File } from "../core/hashing.js";
 import { toSlug } from "../core/slug.js";
-import type { AnalyzeRequest, HashState } from "../core/types.js";
+import type { AnalyzeProgressEvent, AnalyzeRequest, AnalyzeSummary, HashState } from "../core/types.js";
 
 const supportedExtensions = new Set([".png", ".jpg", ".jpeg", ".webp", ".heic"]);
 
@@ -25,7 +25,7 @@ type AnalyzeServiceOptions = {
 
 export function createAnalyzeService(options: AnalyzeServiceOptions) {
   return {
-    async analyze(request: AnalyzeRequest = {}) {
+    async analyze(request: AnalyzeRequest = {}, onProgress?: (event: AnalyzeProgressEvent) => void): Promise<AnalyzeSummary> {
       const analyzedState = await options.analyzedStateStore.read();
       const prompt = await fs.readFile(options.promptPath, "utf8");
       const files = await fg(["*"], {
@@ -35,26 +35,55 @@ export function createAnalyzeService(options: AnalyzeServiceOptions) {
       });
       const imageFiles = files.filter((file) => supportedExtensions.has(path.extname(file).toLowerCase()));
       const selectedFiles = selectImageFiles(imageFiles, request.imageName);
+      const plannedItems = await Promise.all(
+        selectedFiles.map(async (imagePath) => {
+          const hash = await sha256File(imagePath);
+          const previousRecord = analyzedState.byHash[hash];
+          const shouldSkip = Boolean(previousRecord && !request.force);
+
+          return {
+            imagePath,
+            hash,
+            previousRecord,
+            shouldSkip
+          };
+        })
+      );
+      const pendingItems = plannedItems.filter((item) => !item.shouldSkip);
       let analyzedCount = 0;
       let skippedCount = 0;
 
       await fs.ensureDir(options.notesDir);
+      onProgress?.({
+        kind: "start",
+        total: selectedFiles.length,
+        pending: pendingItems.length,
+        skipped: plannedItems.length - pendingItems.length
+      });
 
-      for (const imagePath of selectedFiles) {
-        const hash = await sha256File(imagePath);
-        const previousRecord = analyzedState.byHash[hash];
+      let processedIndex = 0;
 
-        if (previousRecord && !request.force) {
+      for (const item of plannedItems) {
+        if (item.shouldSkip) {
           skippedCount += 1;
           continue;
         }
 
-        const result = await options.analyzer.analyze({ imagePath, prompt });
+        processedIndex += 1;
+        const imageName = path.basename(item.imagePath);
+        onProgress?.({
+          kind: "item",
+          state: "processing",
+          index: processedIndex,
+          total: pendingItems.length,
+          imageName
+        });
+        const result = await options.analyzer.analyze({ imagePath: item.imagePath, prompt });
         const analyzedAt = options.now?.() ?? new Date().toISOString();
-        const notePath = path.join(options.notesDir, buildNoteFileName(result.analysis.title, hash, analyzedAt));
+        const notePath = path.join(options.notesDir, buildNoteFileName(result.analysis.title, item.hash, analyzedAt));
         const markdown = renderMarkdownNote({
           analysis: result.analysis,
-          sourceImagePath: imagePath,
+          sourceImagePath: item.imagePath,
           analyzedAt,
           model: result.model,
           raw: result.raw,
@@ -62,15 +91,22 @@ export function createAnalyzeService(options: AnalyzeServiceOptions) {
         });
 
         await fs.writeFile(notePath, markdown);
-        await removePreviousNote(previousRecord?.notePath, notePath);
+        await removePreviousNote(item.previousRecord?.notePath, notePath);
 
-        analyzedState.byHash[hash] = {
-          imagePath,
+        analyzedState.byHash[item.hash] = {
+          imagePath: item.imagePath,
           notePath,
           analyzedAt,
           model: result.model
         };
         analyzedCount += 1;
+        onProgress?.({
+          kind: "item",
+          state: "done",
+          index: processedIndex,
+          total: pendingItems.length,
+          imageName
+        });
       }
 
       await options.analyzedStateStore.write(analyzedState);

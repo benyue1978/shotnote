@@ -18,7 +18,7 @@ import { bootstrapPromptFile } from "./core/prompt-store.js";
 import { createStateStore } from "./core/state-store.js";
 import { createAnalyzeService } from "./services/analyze-service.js";
 import { createSyncService } from "./services/sync-service.js";
-import type { AnalyzeRequest, SyncRequest, SyncSummary } from "./core/types.js";
+import type { AnalyzeProgressEvent, AnalyzeRequest, AnalyzeSummary, SyncRequest, SyncSummary } from "./core/types.js";
 
 type CliDependencies = {
   sourceLabel: string;
@@ -27,7 +27,7 @@ type CliDependencies = {
     sync(request?: SyncRequest): Promise<SyncSummary>;
   };
   analyzeService: {
-    analyze(request?: AnalyzeRequest): Promise<{ analyzedCount: number; skippedCount: number }>;
+    analyze(request?: AnalyzeRequest, onProgress?: (event: AnalyzeProgressEvent) => void): Promise<AnalyzeSummary>;
   };
   writeLine?(line: string): void;
 };
@@ -171,7 +171,7 @@ export async function createRuntimeCli() {
     sourceLabel: config.source.albumName,
     syncService,
     analyzeService: {
-      async analyze(request?: AnalyzeRequest) {
+      async analyze(request?: AnalyzeRequest, onProgress?: (event: AnalyzeProgressEvent) => void) {
         if (!config.analysis.openAIApiKey) {
           throw new Error("Missing OPENAI_API_KEY. Set it in the environment before running analyze or run.");
         }
@@ -187,7 +187,7 @@ export async function createRuntimeCli() {
           promptPath: config.analysis.promptPath
         });
 
-        return analyzeService.analyze(request);
+        return analyzeService.analyze(request, onProgress);
       }
     }
   });

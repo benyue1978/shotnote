@@ -119,6 +119,26 @@ export type AnalyzeRequest = {
   force?: boolean;
 };
 
+export type AnalyzeProgressEvent =
+  | {
+      kind: "start";
+      total: number;
+      pending: number;
+      skipped: number;
+    }
+  | {
+      kind: "item";
+      state: "processing" | "skipped" | "done";
+      index: number;
+      total: number;
+      imageName: string;
+    };
+
+export type AnalyzeSummary = {
+  analyzedCount: number;
+  skippedCount: number;
+};
+
 export type ResolveConfigOptions = {
   env?: NodeJS.ProcessEnv;
   homeDir?: string;
