@@ -19,10 +19,15 @@ describe("createOpenAIAnalyzer", () => {
 
     const responsesCreate = vi.fn().mockResolvedValue({
       output_text: JSON.stringify({
+        retrievalMode: "source-based",
         type: "website",
         title: "Figma",
         summary: "A product page screenshot.",
         whyInteresting: "Worth checking later.",
+        sourceUrl: "https://www.figma.com",
+        sourceTitle: "Figma",
+        sourceClues: ["figma.com", "design tool"],
+        extractedText: "Browser tab and product page hero content.",
         entities: ["Figma"],
         tags: ["design"]
       })
@@ -44,6 +49,9 @@ describe("createOpenAIAnalyzer", () => {
 
     expect(responsesCreate).toHaveBeenCalledTimes(1);
     expect(result.analysis.title).toBe("Figma");
+    expect(result.analysis.retrievalMode).toBe("source-based");
+    expect(result.analysis.sourceUrl).toBe("https://www.figma.com");
+    expect(result.analysis.sourceClues).toContain("figma.com");
     expect(result.warnings).toEqual([]);
   });
 
@@ -70,6 +78,7 @@ describe("createOpenAIAnalyzer", () => {
 
     expect(result.analysis.type).toBe("other");
     expect(result.analysis.title).toBe("shotnote-test-image-2");
+    expect(result.analysis.retrievalMode).toBe("content-based");
     expect(result.warnings).toContain("parse_failed");
   });
 });

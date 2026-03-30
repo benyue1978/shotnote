@@ -98,6 +98,15 @@ describe("bootstrapConfigFile", () => {
 });
 
 describe("bootstrapPromptFile", () => {
+  it("ships a default prompt that distinguishes source-based and content-based screenshots", () => {
+    expect(defaultAnalyzePrompt).toContain("retrievalMode");
+    expect(defaultAnalyzePrompt).toContain("sourceUrl");
+    expect(defaultAnalyzePrompt).toContain("sourceClues");
+    expect(defaultAnalyzePrompt).toContain("extractedText");
+    expect(defaultAnalyzePrompt).toContain("source-based");
+    expect(defaultAnalyzePrompt).toContain("content-based");
+  });
+
   it("creates the default prompt when the prompt file does not exist", async () => {
     const homeDir = await createTempHome();
     const config = await resolveConfig({ homeDir });

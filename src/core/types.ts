@@ -6,6 +6,8 @@ export type ScreenshotType =
   | "article"
   | "other";
 
+export type RetrievalMode = "source-based" | "content-based";
+
 export type SourceConfig = {
   type: "photos-album";
   albumName: string;
@@ -22,6 +24,7 @@ export type AppPaths = {
   root: string;
   inbox: string;
   notes: string;
+  export: string;
   prompts: string;
   bin: string;
   prompt: string;
@@ -39,10 +42,15 @@ export type ShotnoteConfig = {
 };
 
 export type ScreenshotAnalysis = {
+  retrievalMode: RetrievalMode;
   type: ScreenshotType;
   title: string;
   summary: string;
   whyInteresting: string;
+  sourceUrl?: string;
+  sourceTitle?: string;
+  sourceClues: string[];
+  extractedText?: string;
   entities: string[];
   tags: string[];
 };

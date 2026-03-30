@@ -7,10 +7,15 @@ import { z } from "zod";
 import type { ScreenshotAnalyzer } from "./analyzer.js";
 
 const analysisSchema = z.object({
+  retrievalMode: z.enum(["source-based", "content-based"]),
   type: z.enum(["tool", "website", "git-repo", "concept", "article", "other"]),
   title: z.string().min(1),
   summary: z.string().min(1),
   whyInteresting: z.string().min(1),
+  sourceUrl: z.string().min(1).optional(),
+  sourceTitle: z.string().min(1).optional(),
+  sourceClues: z.array(z.string()).default([]),
+  extractedText: z.string().min(1).optional(),
   entities: z.array(z.string()).default([]),
   tags: z.array(z.string()).default([])
 });
@@ -69,10 +74,13 @@ export function createOpenAIAnalyzer(options: OpenAIAnalyzerOptions): Screenshot
 
         return {
           analysis: {
+            retrievalMode: "content-based",
             type: "other",
             title: fallbackTitle,
             summary: outputText || "The model did not return valid structured JSON.",
             whyInteresting: "Review the raw model output manually.",
+            sourceClues: [],
+            extractedText: outputText || "The model did not return valid structured JSON.",
             entities: [],
             tags: []
           },

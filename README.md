@@ -10,6 +10,7 @@ It is built for a simple workflow:
 2. Let iCloud Photos sync them to your Mac.
 3. Run `shotnote` to pull new screenshots into `~/.shotnote/inbox/`.
 4. Generate one note per image in `~/.shotnote/notes/`.
+5. Copy each newly generated note into `~/.shotnote/export/` for downstream consumption.
 
 ## Requirements
 
@@ -51,6 +52,7 @@ This creates:
 ~/.shotnote/
 ├── inbox/
 ├── notes/
+├── export/
 ├── prompts/
 │   └── analyze-screenshot.md
 ├── state/
@@ -145,7 +147,7 @@ By default, Shotnote reads from the system `Screenshots` collection. This is a s
 
 ### `shotnote analyze`
 
-Analyze screenshots already in `~/.shotnote/inbox/` and write Markdown notes into `~/.shotnote/notes/`.
+Analyze screenshots already in `~/.shotnote/inbox/`, write Markdown notes into `~/.shotnote/notes/`, and copy newly generated notes into `~/.shotnote/export/`.
 
 ```bash
 shotnote analyze
@@ -169,6 +171,8 @@ Run `sync` and then `analyze`:
 shotnote run
 shotnote run --limit 10
 ```
+
+`run` also copies newly generated notes into `~/.shotnote/export/`.
 
 ### `shotnote list-albums`
 

@@ -148,6 +148,7 @@ export async function createRuntimeCli() {
   await fs.ensureDir(initialPaths.root);
   await fs.ensureDir(initialPaths.inbox);
   await fs.ensureDir(initialPaths.notes);
+  await fs.ensureDir(initialPaths.export);
   await fs.ensureDir(initialPaths.prompts);
   await fs.ensureDir(initialPaths.bin);
   await fs.ensureDir(initialPaths.state);
@@ -184,6 +185,7 @@ export async function createRuntimeCli() {
           analyzedStateStore: createStateStore(config.paths.analyzedState),
           inboxDir: config.paths.inbox,
           notesDir: config.paths.notes,
+          exportDir: config.paths.export,
           promptPath: config.analysis.promptPath
         });
 

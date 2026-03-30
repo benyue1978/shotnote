@@ -23,6 +23,7 @@ export function getAppPaths(homeDir = os.homedir()): AppPaths {
     root,
     inbox: path.join(root, "inbox"),
     notes: path.join(root, "notes"),
+    export: path.join(root, "export"),
     prompts,
     bin: path.join(root, "bin"),
     prompt: path.join(prompts, "analyze-screenshot.md"),

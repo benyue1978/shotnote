@@ -19,6 +19,7 @@ type AnalyzeServiceOptions = {
   };
   inboxDir: string;
   notesDir: string;
+  exportDir: string;
   promptPath: string;
   now?: () => string;
 };
@@ -54,6 +55,7 @@ export function createAnalyzeService(options: AnalyzeServiceOptions) {
       let skippedCount = 0;
 
       await fs.ensureDir(options.notesDir);
+      await fs.ensureDir(options.exportDir);
       onProgress?.({
         kind: "start",
         total: selectedFiles.length,
@@ -91,6 +93,7 @@ export function createAnalyzeService(options: AnalyzeServiceOptions) {
         });
 
         await fs.writeFile(notePath, markdown);
+        await fs.copy(notePath, path.join(options.exportDir, path.basename(notePath)), { overwrite: true });
         await removePreviousNote(item.previousRecord?.notePath, notePath);
 
         analyzedState.byHash[item.hash] = {

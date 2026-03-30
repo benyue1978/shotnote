@@ -26,6 +26,7 @@ describe("createAnalyzeService", () => {
     const tempDir = await createTempDir();
     const inboxDir = path.join(tempDir, "inbox");
     const notesDir = path.join(tempDir, "notes");
+    const exportDir = path.join(tempDir, "export");
     const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
     const stateStore = createStateStore(path.join(tempDir, "analyzed.json"));
     const imagePath = path.join(inboxDir, "2026-03-24-langgraph.png");
@@ -42,10 +43,15 @@ describe("createAnalyzeService", () => {
         analyzerCalls.push(input);
         return {
           analysis: {
+            retrievalMode: "source-based",
             type: "git-repo",
             title: "LangGraph",
             summary: "A GitHub repository screenshot.",
             whyInteresting: "Could be useful later.",
+            sourceUrl: "https://github.com/langchain-ai/langgraph",
+            sourceTitle: "LangGraph",
+            sourceClues: ["github.com", "langgraph"],
+            extractedText: "Repository page screenshot.",
             entities: ["LangGraph"],
             tags: ["agents"]
           },
@@ -61,6 +67,7 @@ describe("createAnalyzeService", () => {
       analyzedStateStore: stateStore,
       inboxDir,
       notesDir,
+      exportDir,
       promptPath,
       now: () => "2026-03-24T12:30:00.000Z"
     });
@@ -80,6 +87,7 @@ describe("createAnalyzeService", () => {
     const tempDir = await createTempDir();
     const inboxDir = path.join(tempDir, "inbox");
     const notesDir = path.join(tempDir, "notes");
+    const exportDir = path.join(tempDir, "export");
     const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
     const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
     const imagePath = path.join(inboxDir, "2026-03-24-existing.png");
@@ -106,10 +114,12 @@ describe("createAnalyzeService", () => {
         analyzeCalls += 1;
         return {
           analysis: {
+            retrievalMode: "content-based",
             type: "other",
             title: "unused",
             summary: "unused",
             whyInteresting: "unused",
+            sourceClues: [],
             entities: [],
             tags: []
           },
@@ -125,6 +135,7 @@ describe("createAnalyzeService", () => {
       analyzedStateStore,
       inboxDir,
       notesDir,
+      exportDir,
       promptPath,
       now: () => "2026-03-24T12:30:00.000Z"
     });
@@ -140,6 +151,7 @@ describe("createAnalyzeService", () => {
     const tempDir = await createTempDir();
     const inboxDir = path.join(tempDir, "inbox");
     const notesDir = path.join(tempDir, "notes");
+    const exportDir = path.join(tempDir, "export");
     const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
     const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
     const imagePath = path.join(inboxDir, "2026-03-24-existing.png");
@@ -167,10 +179,13 @@ describe("createAnalyzeService", () => {
         analyzeCalls += 1;
         return {
           analysis: {
+            retrievalMode: "source-based",
             type: "website",
             title: "Retried Note",
             summary: "Retried analysis output.",
             whyInteresting: "Prompt tuning test.",
+            sourceTitle: "Retried Note",
+            sourceClues: ["retry"],
             entities: ["Retried Note"],
             tags: ["retry"]
           },
@@ -186,6 +201,7 @@ describe("createAnalyzeService", () => {
       analyzedStateStore,
       inboxDir,
       notesDir,
+      exportDir,
       promptPath,
       now: () => "2026-03-24T13:00:00.000Z"
     });
@@ -208,6 +224,7 @@ describe("createAnalyzeService", () => {
     const tempDir = await createTempDir();
     const inboxDir = path.join(tempDir, "inbox");
     const notesDir = path.join(tempDir, "notes");
+    const exportDir = path.join(tempDir, "export");
     const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
     const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
     const imagePath = path.join(inboxDir, "2026-03-24-existing.png");
@@ -236,10 +253,13 @@ describe("createAnalyzeService", () => {
       async analyze() {
         return {
           analysis: {
+            retrievalMode: "source-based",
             type: "website",
             title: "Retried Note",
             summary: "Retried analysis output.",
             whyInteresting: "Prompt tuning test.",
+            sourceTitle: "Retried Note",
+            sourceClues: ["retry"],
             entities: ["Retried Note"],
             tags: ["retry"]
           },
@@ -255,6 +275,7 @@ describe("createAnalyzeService", () => {
       analyzedStateStore,
       inboxDir,
       notesDir,
+      exportDir,
       promptPath,
       now: () => "2026-03-24T13:00:00.000Z"
     });
@@ -275,6 +296,7 @@ describe("createAnalyzeService", () => {
     const tempDir = await createTempDir();
     const inboxDir = path.join(tempDir, "inbox");
     const notesDir = path.join(tempDir, "notes");
+    const exportDir = path.join(tempDir, "export");
     const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
     const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
 
@@ -293,6 +315,7 @@ describe("createAnalyzeService", () => {
       analyzedStateStore,
       inboxDir,
       notesDir,
+      exportDir,
       promptPath
     });
 
@@ -308,6 +331,7 @@ describe("createAnalyzeService", () => {
     const tempDir = await createTempDir();
     const inboxDir = path.join(tempDir, "inbox");
     const notesDir = path.join(tempDir, "notes");
+    const exportDir = path.join(tempDir, "export");
     const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
     const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
     const firstImagePath = path.join(inboxDir, "2026-03-24-a.png");
@@ -335,10 +359,13 @@ describe("createAnalyzeService", () => {
       async analyze() {
         return {
           analysis: {
+            retrievalMode: "source-based",
             type: "tool",
             title: "First Image",
             summary: "Processed.",
             whyInteresting: "Useful.",
+            sourceTitle: "First Image",
+            sourceClues: ["tool"],
             entities: ["First"],
             tags: ["tool"]
           },
@@ -355,6 +382,7 @@ describe("createAnalyzeService", () => {
       analyzedStateStore,
       inboxDir,
       notesDir,
+      exportDir,
       promptPath,
       now: () => "2026-03-24T13:00:00.000Z"
     });
@@ -373,5 +401,72 @@ describe("createAnalyzeService", () => {
       "1/1:processing:2026-03-24-a.png",
       "1/1:done:2026-03-24-a.png"
     ]);
+  });
+
+  it("copies newly generated notes into the export directory without copying skipped ones", async () => {
+    const tempDir = await createTempDir();
+    const inboxDir = path.join(tempDir, "inbox");
+    const notesDir = path.join(tempDir, "notes");
+    const exportDir = path.join(tempDir, "export");
+    const promptPath = path.join(tempDir, "prompts", "analyze-screenshot.md");
+    const analyzedStateStore = createStateStore(path.join(tempDir, "analyzed.json"));
+    const firstImagePath = path.join(inboxDir, "2026-03-24-a.png");
+    const secondImagePath = path.join(inboxDir, "2026-03-24-b.png");
+
+    await fs.ensureDir(inboxDir);
+    await fs.ensureDir(path.dirname(promptPath));
+    await fs.writeFile(promptPath, "# Analyze screenshots");
+    await fs.writeFile(firstImagePath, "first-image");
+    await fs.writeFile(secondImagePath, "second-image");
+
+    const secondHash = await sha256File(secondImagePath);
+    await analyzedStateStore.write({
+      byHash: {
+        [secondHash]: {
+          imagePath: secondImagePath,
+          analyzedAt: "2026-03-24T12:30:00.000Z",
+          notePath: "/tmp/second.md",
+          model: "gpt-4.1-mini"
+        }
+      }
+    });
+
+    const analyzer: ScreenshotAnalyzer = {
+      async analyze() {
+        return {
+          analysis: {
+            retrievalMode: "source-based",
+            type: "tool",
+            title: "First Image",
+            summary: "Processed.",
+            whyInteresting: "Useful.",
+            sourceTitle: "First Image",
+            sourceClues: ["tool"],
+            entities: ["First"],
+            tags: ["tool"]
+          },
+          raw: {},
+          warnings: [],
+          model: "gpt-4.1-mini"
+        };
+      }
+    };
+
+    const service = createAnalyzeService({
+      analyzer,
+      analyzedStateStore,
+      inboxDir,
+      notesDir,
+      exportDir,
+      promptPath,
+      now: () => "2026-03-24T13:00:00.000Z"
+    });
+
+    const result = await service.analyze();
+    const exportFiles = await fs.readdir(exportDir);
+
+    expect(result.analyzedCount).toBe(1);
+    expect(exportFiles).toHaveLength(1);
+    expect(exportFiles[0]).toMatch(/^2026-03-24-first-image-/);
   });
 });
