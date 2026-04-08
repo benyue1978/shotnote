@@ -200,6 +200,12 @@ The file is created automatically on first run. Edit it directly to change class
 shotnote analyze --image 2026-03-24-existing.png --force
 ```
 
+## Automation
+
+If you want macOS to run Shotnote on a schedule and push `~/.shotnote/export/` to another machine, use `launchd` instead of `cron`.
+
+See [LAUNCHD.md](./LAUNCHD.md).
+
 ## Troubleshooting
 
 ### `Screenshots` does not appear in `shotnote list-albums`
