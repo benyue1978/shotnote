@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.songyue.shotnote-export</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/zsh</string>
+      <string>-lc</string>
+      <string>/Users/song.yue/shotnote-export-via-iterm2.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>7200</integer>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/song.yue/git/shotnote</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/song.yue/.shotnote/logs/export-launchd.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/song.yue/.shotnote/logs/export-launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <key>https_proxy</key>
+      <string>http://127.0.0.1:7897</string>
+      <key>http_proxy</key>
+      <string>http://127.0.0.1:7897</string>
+      <key>all_proxy</key>
+      <string>socks5://127.0.0.1:7897</string>
+    </dict>
+  </dict>
+</plist>

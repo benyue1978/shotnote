@@ -131,6 +131,7 @@ export function createCli(deps: CliDependencies) {
     .option("--limit <n>", "Only export the most recent N screenshots during sync", parseInt)
     .action(async (commandOptions: { limit?: number }) => {
       await runRunCommand({
+        sourceLabel: deps.sourceLabel,
         sync: deps.syncService.sync,
         analyze: deps.analyzeService.analyze,
         writeLine
